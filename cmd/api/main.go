@@ -6,12 +6,19 @@ import (
 	"time"
 
 	"github.com/nabinagrawal64/olx-api/internal/config"
+	"github.com/nabinagrawal64/olx-api/internal/db"
 	"github.com/nabinagrawal64/olx-api/internal/handlers"
 )
 
 func main() {
 	// Load configurations
 	cfg := config.MustLoad()
+
+	// Connect the database
+	_, err := db.Connect(cfg.DatabaseUrl)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	} 
 
 	// Create router
 	mux := http.NewServeMux()
