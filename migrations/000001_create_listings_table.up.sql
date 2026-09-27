@@ -3,9 +3,8 @@ CREATE TABLE listings (
     title TEXT NOT NULL,
     description TEXT NOT NULL,
     price BIGINT NOT NULL,
-    image_url TEXT NOT NULL,
     city TEXT NOT NULL,
-    created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Indexes

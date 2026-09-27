@@ -36,7 +36,7 @@ func main() {
 		}
 		fmt.Println("Migration up successfully")
 	case "down":
-		if err := m.Down(); err!=nil {
+		if err := m.Steps(-1); err!=nil {
 			log.Fatalf("Migration down error: %v", err)
 		}
 		fmt.Println("Migration down successfully")

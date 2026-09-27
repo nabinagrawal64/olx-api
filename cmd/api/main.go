@@ -15,7 +15,7 @@ func main() {
 	cfg := config.MustLoad()
 
 	// Connect the database
-	_, err := db.Connect(cfg.DatabaseUrl)
+	db, err := db.Connect(cfg.DatabaseUrl)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	} 
@@ -23,6 +23,7 @@ func main() {
 	// Create router
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", handlers.Healthz)
+	mux.HandleFunc("GET /listings", handlers.Listings(db))
 
 	// Initialize HTTP Server
 	srv := http.Server{
