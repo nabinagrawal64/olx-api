@@ -6,20 +6,18 @@ import (
 	"time"
 
 	"github.com/nabinagrawal64/olx-api/internal/config"
+	"github.com/nabinagrawal64/olx-api/internal/handlers"
 )
 
 func main() {
+	// Load configurations
 	cfg := config.MustLoad()
 
+	// Create router
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", 
-		func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type","application/json")
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"status":"ok"}`))// using backtick to create raw string literal
-		},
-	)
+	mux.HandleFunc("GET /healthz", handlers.Healthz)
 
+	// Initialize HTTP Server
 	srv := http.Server{
 		Addr:         ":" + cfg.Port,
 		Handler:      mux,
@@ -34,3 +32,6 @@ func main() {
 		log.Fatalf("Server Failed %v",err)
 	}   
 }
+
+
+// https://olx-api-58x8.onrender.com/healthz
