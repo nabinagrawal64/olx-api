@@ -28,9 +28,11 @@ func NewListingHandlers(db *sql.DB) *ListingHandlers {
 }
 
 func (lh *ListingHandlers) GetListings(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	// Query to fetch all listings
-	rows, err := lh.db.Query(`
-			SELECT id, title, price, description, city, created_at FROM listings
+	rows, err := lh.db.QueryContext(ctx, `
+			SELECT id, title, price, description, city, created_at
+			FROM listings
 			ORDER BY created_at DESC
 			LIMIT 100;
 		`)
@@ -72,14 +74,15 @@ func (lh *ListingHandlers) GetListings(w http.ResponseWriter, r *http.Request) {
 
 func (lh *ListingHandlers) DeleteListing(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-
+	ctx := r.Context()
+	
 	// Delete listing
-	result, err := lh.db.Exec(`DELETE FROM listings WHERE id = $1`, id)
+	result, err := lh.db.ExecContext(ctx, `DELETE FROM listings WHERE id = $1`, id)
 	if err != nil {
 		log.Printf("Delete: %v", err)
 		http.Error(w, "Failed to delete listing", http.StatusInternalServerError)
 		return
-	}
+	} 
 
 	// Get affected rows
 	rowsAffected, err := result.RowsAffected()
