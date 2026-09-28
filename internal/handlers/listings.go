@@ -34,6 +34,7 @@ func NewListingHandlers(db *sql.DB, logger *slog.Logger) *ListingHandlers {
 
 func (lh *ListingHandlers) GetListings(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	requestId := middleware.GetRequestIdFromContext(ctx)
 	// Query to fetch all listings
 	rows, err := lh.db.QueryContext(ctx, `
 			SELECT id, title, price, description, city, created_at
@@ -42,7 +43,7 @@ func (lh *ListingHandlers) GetListings(w http.ResponseWriter, r *http.Request) {
 			LIMIT 100;
 		`)
 	if err != nil {
-		lh.logger.Error("Query Listing Error", slog.Any("error", err))
+		lh.logger.Error("Query Listing Error", slog.Any("error", err), "request_id", requestId)
 		httpx.Error(w, http.StatusInternalServerError, "Failed to query listings", httpx.CodeInternalError)
 		return
 	}
@@ -53,14 +54,14 @@ func (lh *ListingHandlers) GetListings(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var l listings
 		if err := rows.Scan(&l.ID, &l.Title, &l.Price, &l.Description, &l.City, &l.CreatedAt); err != nil {
-			lh.logger.Error("Scan Error", slog.Any("error", err))
+			lh.logger.Error("Scan Error", slog.Any("error", err), "request_id", requestId)
 			httpx.Error(w, http.StatusInternalServerError, "Failed to scan listings", httpx.CodeInternalError)
 			return
 		}
 		ls = append(ls, l)
 	}
 	if err := rows.Err(); err != nil {
-		lh.logger.Error("Rows Error", slog.Any("error", err))
+		lh.logger.Error("Rows Error", slog.Any("error", err), "request_id", requestId)
 		httpx.Error(w, http.StatusInternalServerError, "Failed to scan listings", httpx.CodeInternalError)
 		return
 	}
@@ -73,7 +74,7 @@ func (lh *ListingHandlers) GetListings(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(ls)
 	if err != nil {
-		lh.logger.Error("Encode Error", slog.Any("error", err))
+		lh.logger.Error("Encode Error", slog.Any("error", err), "request_id", requestId)
 		httpx.Error(w, http.StatusInternalServerError, "Failed to encode listings", httpx.CodeInternalError)
 		return
 	}
@@ -112,5 +113,48 @@ func (lh *ListingHandlers) DeleteListing(w http.ResponseWriter, r *http.Request)
 
 	json.NewEncoder(w).Encode(map[string]string{
 		"message": "Listing deleted successfully",
+	})
+}
+
+func (lh *ListingHandlers) CreateListing(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	requestId := middleware.GetRequestIdFromContext(ctx)
+
+	// decode the request body into a listing struct
+	var req listings
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		lh.logger.Error("Failed to decode request body", slog.Any("error", err), "request_id", requestId)
+		httpx.Error(w, http.StatusBadRequest, "Invalid request body", httpx.CodeBadRequest)
+		return
+	}
+
+	// validate the request body
+	if req.Title == "" || req.Description == "" || req.Price <= 0 || req.City == "" {
+		lh.logger.Error("Invalid request body", slog.Any("request", req), "request_id", requestId)
+		httpx.Error(w, http.StatusBadRequest, "Invalid request body", httpx.CodeBadRequest)
+		return
+	}
+
+	// insert the listing into the database
+	var id string
+	err = lh.db.QueryRowContext(ctx, 
+		`INSERT INTO listings (title, price, description, city) VALUES ($1, $2, $3, $4) RETURNING id`,
+		req.Title, req.Price, req.Description, req.City,
+	).Scan(&id)
+	if err != nil {
+		lh.logger.Error("Failed to create listing", slog.Any("error", err), "request_id", requestId)
+		httpx.Error(w, http.StatusInternalServerError, "Failed to create listing", httpx.CodeInternalError)
+		return
+	}
+	
+	lh.logger.Info("Listing created", slog.Any("listing", req), "request_id", requestId)
+
+	// JSON response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Listing created successfully",
+		"id":      id,
 	})
 }

@@ -16,7 +16,9 @@ const (
 	CodeForbidden Code = "forbidden"
 	CodeConflict Code = "conflict"
 	CodeRateLimitExceeded Code = "rate_limit_exceeded"
-
+	CodeBadRequest Code = "bad_request"
+	CodeServiceUnavailable Code = "service_unavailable"
+	CodeTimeout Code = "timeout"
 )
 
 type errorEnvelope struct {
