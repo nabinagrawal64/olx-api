@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/nabinagrawal64/olx-api/internal/httpx"
 	"github.com/nabinagrawal64/olx-api/internal/middleware"
 )
 
@@ -42,7 +43,7 @@ func (lh *ListingHandlers) GetListings(w http.ResponseWriter, r *http.Request) {
 		`)
 	if err != nil {
 		lh.logger.Error("Query Listing Error", slog.Any("error", err))
-		http.Error(w, "Failed to query listings", http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "Failed to query listings", httpx.CodeInternalError)
 		return
 	}
 	defer rows.Close()
@@ -53,14 +54,14 @@ func (lh *ListingHandlers) GetListings(w http.ResponseWriter, r *http.Request) {
 		var l listings
 		if err := rows.Scan(&l.ID, &l.Title, &l.Price, &l.Description, &l.City, &l.CreatedAt); err != nil {
 			lh.logger.Error("Scan Error", slog.Any("error", err))
-			http.Error(w, "Failed to scan listings", http.StatusInternalServerError)
+			httpx.Error(w, http.StatusInternalServerError, "Failed to scan listings", httpx.CodeInternalError)
 			return
 		}
 		ls = append(ls, l)
 	}
 	if err := rows.Err(); err != nil {
 		lh.logger.Error("Rows Error", slog.Any("error", err))
-		http.Error(w, "Failed to scan listings", http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "Failed to scan listings", httpx.CodeInternalError)
 		return
 	}
 
@@ -73,7 +74,7 @@ func (lh *ListingHandlers) GetListings(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(ls)
 	if err != nil {
 		lh.logger.Error("Encode Error", slog.Any("error", err))
-		http.Error(w, "Failed to encode listings", http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "Failed to encode listings", httpx.CodeInternalError)
 		return
 	}
 }
@@ -84,25 +85,26 @@ func (lh *ListingHandlers) DeleteListing(w http.ResponseWriter, r *http.Request)
 	requestId := middleware.GetRequestIdFromContext(ctx)
 	
 	// Delete listing
-	result, err := lh.db.ExecContext(ctx, `DELETE FROM listing WHERE id = $1`, id)
+	_, err := lh.db.ExecContext(ctx, `DELETE FROM listing WHERE id = $1`, id)
 	if err != nil {
 		lh.logger.Error("Failed to delete listing", slog.Any("error", err), "listing_id", id, "request_id", requestId)
-		http.Error(w, "Failed to delete listing", http.StatusInternalServerError)
+		// http.Error(w, "Failed to delete listing", http.StatusInternalServerError)
+		httpx.Error(w, http.StatusInternalServerError, "Failed to delete listing", httpx.CodeInternalError)
 		return
 	} 
 
 	// Get affected rows
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		lh.logger.Error("Failed to get affected rows", slog.Any("error", err), "request_id", requestId)
-		http.Error(w, "Failed to get affected rows", http.StatusInternalServerError)
-		return
-	} 
-	if rowsAffected == 0 {
-		lh.logger.Error("Listing not found")
-		http.Error(w, "Listing not found", http.StatusNotFound)
-		return
-	}
+	// rowsAffected, err := result.RowsAffected()
+	// if err != nil {
+	// 	lh.logger.Error("Failed to get affected rows", slog.Any("error", err), "request_id", requestId)
+	// 	http.Error(w, "Failed to get affected rows", http.StatusInternalServerError)
+	// 	return
+	// } 
+	// if rowsAffected == 0 {
+	// 	lh.logger.Error("Listing not found")
+	// 	http.Error(w, "Listing not found", http.StatusNotFound)
+	// 	return
+	// }
 
 	// JSON response
 	w.Header().Set("Content-Type", "application/json")
