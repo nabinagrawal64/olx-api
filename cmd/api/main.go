@@ -2,7 +2,9 @@ package main
 
 import (
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/nabinagrawal64/olx-api/internal/config"
@@ -19,9 +21,17 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	} 
+	
+	// Error Log Format
+	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		AddSource: true,
+		Level: slog.LevelInfo,
+	}) 
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
 
 	// Create router
-	lh := handlers.NewListingHandlers(db)
+	lh := handlers.NewListingHandlers(db, logger)
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", handlers.Healthz)
 	mux.HandleFunc("GET /listings", lh.GetListings)

@@ -3,7 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -19,11 +19,13 @@ type listings struct {
 
 type ListingHandlers struct {
 	db *sql.DB
+	logger *slog.Logger
 }
 
-func NewListingHandlers(db *sql.DB) *ListingHandlers {
+func NewListingHandlers(db *sql.DB, logger *slog.Logger) *ListingHandlers {
 	return &ListingHandlers{
 		db: db,
+		logger: logger,
 	}
 }
 
@@ -37,7 +39,7 @@ func (lh *ListingHandlers) GetListings(w http.ResponseWriter, r *http.Request) {
 			LIMIT 100;
 		`)
 	if err != nil {
-		log.Printf("Query: %v", err)
+		lh.logger.Error("Query Listing Error", slog.Any("error", err))
 		http.Error(w, "Failed to query listings", http.StatusInternalServerError)
 		return
 	}
@@ -48,17 +50,19 @@ func (lh *ListingHandlers) GetListings(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var l listings
 		if err := rows.Scan(&l.ID, &l.Title, &l.Price, &l.Description, &l.City, &l.CreatedAt); err != nil {
-			log.Printf("Scan Error: %v", err)
+			lh.logger.Error("Scan Error", slog.Any("error", err))
 			http.Error(w, "Failed to scan listings", http.StatusInternalServerError)
 			return
 		}
 		ls = append(ls, l)
 	}
 	if err := rows.Err(); err != nil {
-		log.Printf("Rows Error: %v", err)
+		lh.logger.Error("Rows Error", slog.Any("error", err))
 		http.Error(w, "Failed to scan listings", http.StatusInternalServerError)
 		return
 	}
+
+	lh.logger.Info("Fetched listings", slog.Int("count", len(ls)))
 
 	// JSON response
 	w.Header().Set("Content-Type", "application/json")
@@ -66,7 +70,7 @@ func (lh *ListingHandlers) GetListings(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(ls)
 	if err != nil {
-		log.Printf("Encode Error: %v", err)
+		lh.logger.Error("Encode Error", slog.Any("error", err))
 		http.Error(w, "Failed to encode listings", http.StatusInternalServerError)
 		return
 	}
@@ -79,7 +83,7 @@ func (lh *ListingHandlers) DeleteListing(w http.ResponseWriter, r *http.Request)
 	// Delete listing
 	result, err := lh.db.ExecContext(ctx, `DELETE FROM listings WHERE id = $1`, id)
 	if err != nil {
-		log.Printf("Delete: %v", err)
+		lh.logger.Error("Failed to delete listing", slog.Any("error", err), "listing_id", id)
 		http.Error(w, "Failed to delete listing", http.StatusInternalServerError)
 		return
 	} 
@@ -87,11 +91,12 @@ func (lh *ListingHandlers) DeleteListing(w http.ResponseWriter, r *http.Request)
 	// Get affected rows
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		log.Printf("Rows Affected Error: %v", err)
+		lh.logger.Error("Failed to get affected rows", slog.Any("error", err))
 		http.Error(w, "Failed to get affected rows", http.StatusInternalServerError)
 		return
-	}
+	} 
 	if rowsAffected == 0 {
+		lh.logger.Error("Listing not found")
 		http.Error(w, "Listing not found", http.StatusNotFound)
 		return
 	}
