@@ -87,7 +87,7 @@ func (lh *ListingHandlers) DeleteListing(w http.ResponseWriter, r *http.Request)
 	requestId := middleware.GetRequestIdFromContext(ctx)
 	
 	// Delete listing
-	_, err := lh.db.ExecContext(ctx, `DELETE FROM listing WHERE id = $1`, id)
+	_, err := lh.db.ExecContext(ctx, `DELETE FROM listings WHERE id = $1`, id)
 	if err != nil {
 		lh.logger.Error("Failed to delete listing", slog.Any("error", err), "listing_id", id, "request_id", requestId)
 		// http.Error(w, "Failed to delete listing", http.StatusInternalServerError)
