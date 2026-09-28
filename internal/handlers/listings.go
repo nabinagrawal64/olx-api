@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/nabinagrawal64/olx-api/internal/middleware"
 )
 
 type listings struct {
@@ -79,11 +81,12 @@ func (lh *ListingHandlers) GetListings(w http.ResponseWriter, r *http.Request) {
 func (lh *ListingHandlers) DeleteListing(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	ctx := r.Context()
+	requestId := middleware.GetRequestIdFromContext(ctx)
 	
 	// Delete listing
-	result, err := lh.db.ExecContext(ctx, `DELETE FROM listings WHERE id = $1`, id)
+	result, err := lh.db.ExecContext(ctx, `DELETE FROM listing WHERE id = $1`, id)
 	if err != nil {
-		lh.logger.Error("Failed to delete listing", slog.Any("error", err), "listing_id", id)
+		lh.logger.Error("Failed to delete listing", slog.Any("error", err), "listing_id", id, "request_id", requestId)
 		http.Error(w, "Failed to delete listing", http.StatusInternalServerError)
 		return
 	} 
@@ -91,7 +94,7 @@ func (lh *ListingHandlers) DeleteListing(w http.ResponseWriter, r *http.Request)
 	// Get affected rows
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		lh.logger.Error("Failed to get affected rows", slog.Any("error", err))
+		lh.logger.Error("Failed to get affected rows", slog.Any("error", err), "request_id", requestId)
 		http.Error(w, "Failed to get affected rows", http.StatusInternalServerError)
 		return
 	} 

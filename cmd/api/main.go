@@ -10,6 +10,7 @@ import (
 	"github.com/nabinagrawal64/olx-api/internal/config"
 	"github.com/nabinagrawal64/olx-api/internal/db"
 	"github.com/nabinagrawal64/olx-api/internal/handlers"
+	"github.com/nabinagrawal64/olx-api/internal/middleware"
 )
 
 func main() {
@@ -23,11 +24,11 @@ func main() {
 	} 
 	
 	// Error Log Format
-	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+	logHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		AddSource: true,
 		Level: slog.LevelInfo,
 	}) 
-	logger := slog.New(handler)
+	logger := slog.New(logHandler)
 	slog.SetDefault(logger)
 
 	// Create router
@@ -38,9 +39,10 @@ func main() {
 	mux.HandleFunc("DELETE /listings/{id}", lh.DeleteListing)
 
 	// Initialize HTTP Server
+	handler := middleware.RequestId(mux)
 	srv := http.Server{
 		Addr:         ":" + cfg.Port,
-		Handler:      mux,
+		Handler:      handler,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,
