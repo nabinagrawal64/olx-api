@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"time"
@@ -130,10 +131,12 @@ func (lh *ListingHandlers) CreateListing(w http.ResponseWriter, r *http.Request)
 	}
 
 	// validate the request body
-	if req.Title == "" || req.Description == "" || req.Price <= 0 || req.City == "" {
+	if err := req.Validate(); err != nil {
+		var verr *ValidationError
+		errors.As(err, &verr)
 		lh.logger.Error("Invalid request body", slog.Any("request", req), "request_id", requestId)
-		httpx.Error(w, http.StatusBadRequest, "Invalid request body", httpx.CodeBadRequest)
-		return
+		httpx.ValidationError(w, http.StatusBadRequest, err.Error(), httpx.CodeBadRequest, verr.Field)
+		return 
 	}
 
 	// insert the listing into the database
